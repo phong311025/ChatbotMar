@@ -2,6 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
+/// <reference types="vite/client" />
 
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
@@ -23,14 +24,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from './lib/utils';
-
-// Core parsers
-import * as pdfjs from 'pdfjs-dist';
-import mammoth from 'mammoth';
-import * as XLSX from 'xlsx';
-
-// Initialize PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 // --- KNOWLEDGE BASE ---
 const KNOWLEDGE_BASE = `
@@ -115,8 +108,13 @@ export default function App() {
   const aiRef = useRef<any>(null);
 
   useEffect(() => {
-    const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-    aiRef.current = genAI;
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    if (apiKey) {
+      const genAI = new GoogleGenAI({ apiKey });
+      aiRef.current = genAI;
+    } else {
+      console.warn("Missing Gemini API Key. Please add VITE_GEMINI_API_KEY to your env variables.");
+    }
   }, []);
 
   useEffect(() => {
@@ -144,6 +142,8 @@ export default function App() {
       const arrayBuffer = await file.arrayBuffer();
 
       if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+        const pdfjs = await import('pdfjs-dist');
+        pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
         const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
         const pdf = await loadingTask.promise;
         let fullText = '';
@@ -155,9 +155,11 @@ export default function App() {
         }
         content = fullText;
       } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.name.endsWith('.docx')) {
+        const mammoth = (await import('mammoth')).default;
         const result = await mammoth.extractRawText({ arrayBuffer });
         content = result.value;
       } else if (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.name.endsWith('.xlsx')) {
+        const XLSX = await import('xlsx');
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
@@ -194,6 +196,11 @@ export default function App() {
       content: attachedFile ? `📎 Đã đính kèm tệp: ${attachedFile.name}${input ? `\n\n${input}` : ''}` : input 
     };
     
+    if (!aiRef.current) {
+      alert("Hệ thống AI chưa được kết nối. Vui lòng thêm VITE_GEMINI_API_KEY vào biến môi trường (Environment Variables) trên Vercel của bạn và deploy lại.");
+      return;
+    }
+
     const updatedMessages = [...messages, userMessage];
     const displayUpdatedMessages = [...messages, displayMessage];
     
