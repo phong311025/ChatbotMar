@@ -1,0 +1,6 @@
+{
+  "name": "AOF Admissions Chatbot 2026",
+  "description": "Chatbot tư vấn tuyển sinh thông minh dành cho thí sinh đăng ký vào Học viện Tài chính năm 2026, dựa trên quy chế mới nhất và bộ câu hỏi giải đáp chi tiết.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["AI_CHAT", "ADMISSIONS_CONSULTANCY"]
+}
